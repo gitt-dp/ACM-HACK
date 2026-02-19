@@ -17,13 +17,8 @@
       }, 'google_translate_element');
     }
   </script>
-<script>
-  if (location.hostname !== "localhost") {
-    const script = document.createElement("script");
-    script.src = "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
-    document.head.appendChild(script);
-  }
-</script>
+  <!-- Load Google Translate ALWAYS -->
+  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
   
   <!-- CSS to hide the banner and style the button -->
   <style>
@@ -68,6 +63,11 @@
     
     .goog-te-gadget-simple img {
       display: none !important;
+    }
+    
+    /* Ensure the button is visible */
+    #google_translate_element {
+      display: block !important;
     }
   </style>
 </head>

@@ -1,7 +1,27 @@
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+function useTyping(text, speed = 40) {
+  const [displayed, setDisplayed] = useState("");
+
+  useEffect(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      setDisplayed(text.slice(0, i + 1));
+      i++;
+      if (i >= text.length) clearInterval(interval);
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, [text]);
+
+  return displayed;
+}
 
 export default function IntroPage() {
   const navigate = useNavigate();
+const tagline = useTyping(
+  "Discover schemes. Check eligibility. Apply faster 🇮🇳"
+);
 
   return (
     <div
