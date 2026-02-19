@@ -1,0 +1,110 @@
+[
+  {
+    "name": "PM Kisan Samman Nidhi",
+    "type": "central",
+    "state": "All",
+    "category": "Farmer",
+    "description": "Income support of ₹6000/year to farmer families",
+    "documents": ["Aadhar", "Land Record"],
+    "link": "https://pmkisan.gov.in"
+  },
+  {
+    "name": "PM Fasal Bima Yojana",
+    "type": "central",
+    "state": "All",
+    "category": "Farmer",
+    "description": "Crop insurance covering losses due to natural calamities",
+    "documents": ["Aadhar", "Land Record", "Bank Passbook"],
+    "link": "https://pmfby.gov.in"
+  },
+  {
+    "name": "Tamil Nadu Vivasayigal Scheme",
+    "type": "state",
+    "state": "Tamil Nadu",
+    "category": "Farmer",
+    "description": "Financial aid and crop insurance for Tamil Nadu farmers",
+    "documents": ["Aadhar", "Land Record", "Ration Card"],
+    "link": "https://www.tn.gov.in"
+  },
+  {
+    "name": "National Scholarship Portal",
+    "type": "central",
+    "state": "All",
+    "category": "Student",
+    "description": "Scholarships for higher education students from low income families",
+    "documents": ["Aadhar", "Marksheet", "Bank Passbook"],
+    "link": "https://scholarships.gov.in"
+  },
+  {
+    "name": "Skill India Mission",
+    "type": "central",
+    "state": "All",
+    "category": "Student",
+    "description": "Free skill development training in 40+ sectors with placement assistance",
+    "documents": ["Aadhar", "School Certificate"],
+    "link": "https://skillindia.gov.in"
+  },
+  {
+    "name": "Tamil Nadu Free Laptop Scheme",
+    "type": "state",
+    "state": "Tamil Nadu",
+    "category": "Student",
+    "description": "Free laptop for government school students entering college",
+    "documents": ["Aadhar", "School Certificate"],
+    "link": "https://www.tn.gov.in"
+  },
+  {
+    "name": "PM Ujjwala Yojana",
+    "type": "central",
+    "state": "All",
+    "category": "Women",
+    "description": "Free LPG gas connection to women from BPL households",
+    "documents": ["Aadhar", "BPL Ration Card"],
+    "link": "https://pmuy.gov.in"
+  },
+  {
+    "name": "Sukanya Samriddhi Yojana",
+    "type": "central",
+    "state": "All",
+    "category": "Women",
+    "description": "High interest savings scheme for girl child with tax benefits",
+    "documents": ["Aadhar", "Birth Certificate"],
+    "link": "https://www.indiapost.gov.in"
+  },
+  {
+    "name": "Tamil Nadu Kalaignar Magalir Urimai Thogai",
+    "type": "state",
+    "state": "Tamil Nadu",
+    "category": "Women",
+    "description": "₹1000/month financial assistance for women",
+    "documents": ["Aadhar", "Ration Card"],
+    "link": "https://www.tn.gov.in"
+  },
+  {
+    "name": "Ayushman Bharat PM-JAY",
+    "type": "central",
+    "state": "All",
+    "category": "General Low Income",
+    "description": "Free health coverage up to ₹5 lakh per family per year",
+    "documents": ["Aadhar", "Income Certificate"],
+    "link": "https://pmjay.gov.in"
+  },
+  {
+    "name": "PM SVANidhi",
+    "type": "central",
+    "state": "All",
+    "category": "Worker",
+    "description": "Micro credit loan up to ₹50,000 for street vendors",
+    "documents": ["Aadhar", "Vendor Certificate"],
+    "link": "https://pmsvanidhi.mohua.gov.in"
+  },
+  {
+    "name": "Indira Gandhi Pension Scheme",
+    "type": "central",
+    "state": "All",
+    "category": "Senior Citizen",
+    "description": "Monthly pension for senior citizens below poverty line",
+    "documents": ["Aadhar", "Age Proof", "BPL Certificate"],
+    "link": "https://nsap.nic.in"
+  }
+]
