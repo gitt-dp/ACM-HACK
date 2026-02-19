@@ -18,7 +18,7 @@ export default function App() {
           className="absolute w-[900px] h-[900px] opacity-25 blur-3xl rounded-full"
           style={{ backgroundImage: "linear-gradient(135deg,#38A2D7,#561139)" }}
         />
-
+        <div id="google_translate_element" style={{ display: 'none' }}></div>
         {/* Page Content */}
         <div className="relative z-10 w-full flex items-center justify-center">
           {page === "intro" && <IntroPage onStart={() => setPage("login")} />}

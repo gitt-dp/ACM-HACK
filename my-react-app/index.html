@@ -1,13 +1,73 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>my-react-app</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SchemeAI - Your Government Scheme Assistant</title>
+  
+  <!-- Google Translate Script -->
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: 'hi,ta,te,bn,mr,gu,kn,ml',
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+        autoDisplay: false
+      }, 'google_translate_element');
+    }
+  </script>
+  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+  
+  <!-- CSS to hide the banner and style the button -->
+  <style>
+    /* Hide the annoying top banner */
+    .goog-te-banner-frame {
+      display: none !important;
+    }
+    
+    /* Remove the space the banner would take */
+    body {
+      top: 0 !important;
+    }
+    
+    /* Hide the "Translated into" text */
+    .goog-te-gadget-simple .goog-te-menu-value span:first-child {
+      display: none !important;
+    }
+    
+    /* Style your language button */
+    .goog-te-gadget {
+      position: fixed !important;
+      bottom: 20px !important;
+      right: 20px !important;
+      z-index: 9999 !important;
+    }
+    
+    .goog-te-gadget-simple {
+      background: linear-gradient(135deg, #38A2D7, #561139) !important;
+      border: none !important;
+      border-radius: 40px !important;
+      padding: 12px 24px !important;
+      font-size: 15px !important;
+      font-weight: 500 !important;
+      color: white !important;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+      cursor: pointer !important;
+    }
+    
+    .goog-te-gadget-simple span {
+      color: white !important;
+    }
+    
+    .goog-te-gadget-simple img {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="google_translate_element"></div>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
 </html>
