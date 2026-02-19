@@ -1,50 +1,22 @@
 import { useState } from "react";
+import { UserProvider } from "./context/UserContext";
+import IntroPage from "./components/IntroPage";
+import EntryPage from "./components/EntryPage";
 
-function App() {
-  const [names, setNames] = useState([]);
-  const [input, setInput] = useState("");
-
-  function addName() {
-    if (!input) return;
-
-    const newItem = {
-      id: Date.now(),   // unique id
-      name: input
-    };
-
-    setNames([...names, newItem]);
-    setInput("");
-  }
-
-  function deleteName(id) {
-    const filtered = names.filter((n) => n.id !== id);
-    setNames(filtered);
-  }
+export default function App() {
+  const [screen, setScreen] = useState("intro");
 
   return (
-    <div>
-      <h1>React Local Test</h1>
+    <UserProvider>
 
-      <input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Enter name"
-      />
+      {screen === "intro" && (
+        <IntroPage onStart={() => setScreen("auth")} />
+      )}
 
-      <button onClick={addName}>Add</button>
+      {screen === "auth" && (
+        <EntryPage onSuccess={() => alert("Login success")} />
+      )}
 
-      <ul>
-        {names.map((n) => (
-          <li key={n.id}>
-            {n.name}
-            <button onClick={() => deleteName(n.id)}>
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    </UserProvider>
   );
 }
-
-export default App;
