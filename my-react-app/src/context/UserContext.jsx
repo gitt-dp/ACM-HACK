@@ -8,47 +8,85 @@ export function UserProvider({ children }) {
     user: null,
   });
 
-  // Load from Supabase on mount (optional - won't break if missing)
+  // Load from Supabase on mount
   useEffect(() => {
-    const loadFromSupabase = async () => {
-      const savedSessionId = localStorage.getItem('sessionId');
-      if (savedSessionId) {
-        try {
-          const { data } = await supabase
-            .from('user_sessions')
-            .select('user_data')
-            .eq('session_id', savedSessionId)
-            .single();
-          
-          if (data?.user_data) {
-            setUserData(data.user_data);
-          }
-        } catch (error) {
-          console.log('Supabase not ready yet, using local state');
-        }
-      }
-    };
-    loadFromSupabase();
+    initializeSession();
   }, []);
 
+  const initializeSession = async () => {
+    try {
+      // Check for existing session in localStorage
+      let sessionId = localStorage.getItem('sessionId');
+      
+      if (sessionId) {
+        // Try to load existing session
+        const { data, error } = await supabase
+          .from('user_sessions')
+          .select('user_data')
+          .eq('session_id', sessionId)
+          .maybeSingle();
+        
+        if (!error && data) {
+          console.log('Loaded existing session:', data);
+          setUserData(data.user_data || { user: null });
+          return;
+        } else if (error) {
+          console.log('Error loading session (RLS may be blocking):', error);
+        }
+      }
+      
+      // Create new session
+      sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('sessionId', sessionId);
+      
+      // Try to create session in Supabase
+      const { error: insertError } = await supabase
+        .from('user_sessions')
+        .insert([{
+          session_id: sessionId,
+          user_data: { user: null }
+        }]);
+      
+      if (insertError) {
+        console.log('Failed to create session in Supabase:', insertError.message);
+        console.log('This might be an RLS issue - check your policies');
+      } else {
+        console.log('New session created in Supabase:', sessionId);
+      }
+      
+    } catch (error) {
+      console.log('Session initialization error:', error);
+    }
+  };
+
   // Wrapper for setUserData
-  const updateUserData = (newData) => {
-    // Update local state first (this keeps UI working)
+  const updateUserData = async (newData) => {
     const updatedData = typeof newData === 'function' 
       ? newData(userData) 
       : { ...userData, ...newData };
     
     setUserData(updatedData);
 
-    // Try to save to Supabase (won't break if it fails)
+    // Try to save to Supabase
     const sessionId = localStorage.getItem('sessionId');
     if (sessionId) {
-      supabase
-        .from('user_sessions')
-        .update({ user_data: updatedData })
-        .eq('session_id', sessionId)
-        .then(() => console.log('Saved to Supabase'))
-        .catch(err => console.log('Supabase save failed, but UI works'));
+      try {
+        const { error } = await supabase
+          .from('user_sessions')
+          .update({ 
+            user_data: updatedData,
+            last_active: new Date().toISOString()
+          })
+          .eq('session_id', sessionId);
+        
+        if (error) {
+          console.log('Failed to save to Supabase:', error.message);
+        } else {
+          console.log('✅ Data saved to Supabase');
+        }
+      } catch (err) {
+        console.log('Error saving to Supabase:', err);
+      }
     }
   };
 

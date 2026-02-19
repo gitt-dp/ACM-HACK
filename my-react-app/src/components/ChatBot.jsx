@@ -157,9 +157,15 @@ export default function ChatBot() {
   const [freeText, setFreeText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [showFreeInput, setShowFreeInput] = useState(false);
+  const [allSchemes, setAllSchemes] = useState([]);
   const bottomRef = useRef(null);
   
   const { userData } = useUser();
+
+  // Load all schemes from Supabase on mount
+  useEffect(() => {
+    loadAllSchemes();
+  }, []);
 
   // Initialize chat
   useEffect(() => {
@@ -172,6 +178,25 @@ export default function ChatBot() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const loadAllSchemes = async () => {
+    try {
+      console.log("Loading schemes from Supabase...");
+      const { data, error } = await supabase
+        .from('government_schemes')
+        .select('*');
+
+      if (error) {
+        console.error("Error loading schemes:", error);
+        return;
+      }
+
+      console.log(`Loaded ${data.length} schemes:`, data.map(s => s.name));
+      setAllSchemes(data);
+    } catch (err) {
+      console.error("Failed to load schemes:", err);
+    }
+  };
 
   // Handle when bot message finishes typing
   const handleBotDone = () => {
@@ -206,173 +231,67 @@ export default function ChatBot() {
     return incomeMap[incomeRange] || 0;
   };
 
-  // Fetch and filter schemes
-  const fetchEligibleSchemes = async (userAnswers) => {
-    setLoading(true);
-    
-    try {
-      console.log("🔍 FETCHING SCHEMES FROM SUPABASE...");
-      console.log("📝 User Answers:", userAnswers);
+  // Check if user is eligible for a specific scheme based on hardcoded rules
+  const isEligibleForScheme = (schemeName, answers) => {
+    const age = getAgeNumeric(answers.age);
+    const income = getIncomeNumeric(answers.income);
+    const occupation = answers.occupation.toLowerCase();
+    const landholding = answers.landholding === "Yes";
+    const bplCard = answers.bpl_card === "Yes";
+    const hasGirlChild = answers.girl_child === "Yes";
 
-      // Get all schemes from Supabase
-      const { data: schemes, error } = await supabase
-        .from('government_schemes')
-        .select('*');
+    console.log(`Checking eligibility for: ${schemeName}`);
 
-      if (error) {
-        console.error("❌ Supabase Error:", error);
-        throw error;
-      }
-
-      console.log(`✅ Found ${schemes.length} schemes in database`);
-      console.log("📋 All schemes:", schemes.map(s => s.name));
-
-      // For each scheme, log its eligibility criteria
-      schemes.forEach((scheme, index) => {
-        console.log(`\n--- Scheme ${index + 1}: ${scheme.name} ---`);
-        console.log("Criteria:", JSON.stringify(scheme.eligibility_criteria, null, 2));
-      });
-
-      // Manual test with hardcoded expected matches
-      console.log("\n🔍 TESTING WITH PROVIDED ANSWERS:");
-      
-      const testAnswers = {
-        state: "Tamil Nadu",
-        occupation: "Farmer",
-        income: "Less than ₹10,000",
-        age: "31-40",
-        landholding: "Yes",
-        bpl_card: "Yes",
-        girl_child: "Yes"
-      };
-
-      console.log("Test answers:", testAnswers);
-
-      // Test each scheme manually
-      const expectedMatches = {
-        "PM Shram Yogi Maan-dhan Yojana (PM-SYM)": true,
-        "Pradhan Mantri Jeevan Jyoti Bima Yojana (PMJJBY)": true,
-        "Pradhan Mantri Suraksha Bima Yojana (PMSBY)": true,
-        "Atal Pension Yojana (APY)": true,
-        "National Food Security Act (NFSA)": true,
-        "Indira Gandhi National Old Age Pension Scheme (IGNOAPS)": false,
-        "PM Surya Ghar Muft Bijli Yojana": true,
-        "Sukanya Samriddhi Yojana (SSY)": true,
-        "National Pension Scheme for Traders (NPS-Traders)": false
-      };
-
-      // Filter schemes based on actual logic
-      const filtered = schemes.filter(scheme => {
-        const criteria = scheme.eligibility_criteria;
-        let isEligible = true;
-        const reasons = [];
-
-        console.log(`\nChecking: ${scheme.name}`);
-
-        // State check
-        if (criteria.state && criteria.state !== "all" && criteria.state !== testAnswers.state) {
-          isEligible = false;
-          reasons.push(`State mismatch: need ${criteria.state}, got ${testAnswers.state}`);
-        }
-
-        // Age check
-        if (criteria.min_age || criteria.max_age) {
-          const age = getAgeNumeric(testAnswers.age);
-          if (criteria.min_age && age < criteria.min_age) {
-            isEligible = false;
-            reasons.push(`Age too low: ${age} < ${criteria.min_age}`);
-          }
-          if (criteria.max_age && age > criteria.max_age) {
-            isEligible = false;
-            reasons.push(`Age too high: ${age} > ${criteria.max_age}`);
-          }
-        }
-
-        // Income check
-        if (criteria.max_income) {
-          const income = getIncomeNumeric(testAnswers.income);
-          if (income > criteria.max_income) {
-            isEligible = false;
-            reasons.push(`Income too high: ${income} > ${criteria.max_income}`);
-          }
-        }
-
-        // Occupation check
-        if (criteria.occupations && criteria.occupations.length > 0) {
-          if (!criteria.occupations.includes("any")) {
-            const userOcc = testAnswers.occupation.toLowerCase();
-            const matchFound = criteria.occupations.some(occ => {
-              const occLower = occ.toLowerCase();
-              return userOcc.includes(occLower) || occLower.includes(userOcc.split(' ')[0]);
-            });
-            if (!matchFound) {
-              isEligible = false;
-              reasons.push(`Occupation mismatch: ${testAnswers.occupation} not in ${criteria.occupations.join(', ')}`);
-            }
-          }
-        }
-
-        // Landholding check
-        if (criteria.landholding_required && testAnswers.landholding === "No") {
-          isEligible = false;
-          reasons.push(`Landholding required`);
-        }
-
-        // BPL check
-        if (criteria.bpl_required && testAnswers.bpl_card === "No") {
-          isEligible = false;
-          reasons.push(`BPL card required`);
-        }
-
-        // Girl child check
-        if (criteria.min_age_girl !== undefined && testAnswers.girl_child === "No") {
-          isEligible = false;
-          reasons.push(`Girl child required`);
-        }
-
-        console.log(`Result: ${isEligible ? '✅ ELIGIBLE' : '❌ NOT ELIGIBLE'}`);
-        if (reasons.length > 0) {
-          console.log('Reasons:', reasons);
-        }
-
-        // Compare with expected
-        const expected = expectedMatches[scheme.name];
-        if (expected !== undefined) {
-          if (isEligible === expected) {
-            console.log(`✓ Matches expected: ${expected}`);
-          } else {
-            console.log(`✗ MISMATCH! Expected: ${expected}, Got: ${isEligible}`);
-          }
-        }
-
-        return isEligible;
-      });
-
-      console.log("\n🎯 FINAL ELIGIBLE SCHEMES:", filtered.map(s => s.name));
-      setEligibleSchemes(filtered);
-
-      // Add result message
-      setTimeout(() => {
-        setMessages(prev => [...prev, { 
-          type: "bot", 
-          text: filtered.length > 0
-            ? `✅ Found ${filtered.length} scheme(s) you may be eligible for!`
-            : "😔 No schemes found matching your criteria. Check console for details.",
-          id: Date.now()
-        }]);
-        setShowFreeInput(true);
-      }, 500);
-
-    } catch (error) {
-      console.error('Error fetching schemes:', error);
-      setMessages(prev => [...prev, { 
-        type: "bot", 
-        text: "Sorry, I'm having trouble connecting. Please try again.",
-        id: Date.now()
-      }]);
-    } finally {
-      setLoading(false);
+    // PM Shram Yogi Maan-dhan Yojana (PM-SYM)
+    if (schemeName.includes("PM Shram Yogi") || schemeName.includes("PM-SYM")) {
+      const eligibleOccupations = ["street vendor", "construction worker", "fisherman", "casual labour"];
+      const occupationMatch = eligibleOccupations.some(occ => occupation.includes(occ));
+      return age >= 18 && age <= 40 && income <= 15000 && occupationMatch;
     }
+
+    // Pradhan Mantri Jeevan Jyoti Bima Yojana (PMJJBY)
+    if (schemeName.includes("PMJJBY") || schemeName.includes("Jeevan Jyoti")) {
+      return age >= 18 && age <= 50;
+    }
+
+    // Pradhan Mantri Suraksha Bima Yojana (PMSBY)
+    if (schemeName.includes("PMSBY") || schemeName.includes("Suraksha Bima")) {
+      return age >= 18 && age <= 70;
+    }
+
+    // Atal Pension Yojana (APY)
+    if (schemeName.includes("Atal Pension") || schemeName.includes("APY")) {
+      return age >= 18 && age <= 40;
+    }
+
+    // National Food Security Act (NFSA)
+    if (schemeName.includes("NFSA") || schemeName.includes("Food Security")) {
+      return bplCard === true;
+    }
+
+    // Indira Gandhi National Old Age Pension Scheme (IGNOAPS)
+    if (schemeName.includes("IGNOAPS") || schemeName.includes("Old Age Pension")) {
+      return age >= 60 && bplCard === true;
+    }
+
+    // PM Surya Ghar Muft Bijli Yojana
+    if (schemeName.includes("Surya Ghar") || schemeName.includes("Solar")) {
+      return landholding === true;
+    }
+
+    // Sukanya Samriddhi Yojana (SSY)
+    if (schemeName.includes("Sukanya") || schemeName.includes("SSY")) {
+      return hasGirlChild === true;
+    }
+
+    // National Pension Scheme for Traders (NPS-Traders)
+    if (schemeName.includes("NPS-Traders") || schemeName.includes("Traders")) {
+      const eligibleOccupations = ["shopkeeper"];
+      const occupationMatch = eligibleOccupations.some(occ => occupation.includes(occ));
+      return age >= 18 && age <= 40 && occupationMatch;
+    }
+
+    return false;
   };
 
   const handleOption = (option) => {
@@ -397,22 +316,30 @@ export default function ChatBot() {
         }]);
       }, 500);
     } else {
-      // Use the actual answers, not test answers
-      fetchEligibleSchemes(newAnswers);
+      // All questions answered - check eligibility
+      setLoading(true);
       
-      const sessionId = localStorage.getItem('sessionId');
-      if (sessionId) {
-        supabase
-          .from('user_sessions')
-          .update({ 
-            user_data: { 
-              ...userData,
-              questionnaire: newAnswers 
-            }
-          })
-          .eq('session_id', sessionId)
-          .catch(err => console.log('Error saving answers:', err));
-      }
+      setTimeout(() => {
+        // Filter schemes based on eligibility rules
+        const eligible = allSchemes.filter(scheme => {
+          return isEligibleForScheme(scheme.name, newAnswers);
+        });
+        
+        console.log("User answers:", newAnswers);
+        console.log("Eligible schemes:", eligible.map(s => s.name));
+        
+        setEligibleSchemes(eligible);
+        setLoading(false);
+        
+        setMessages(prev => [...prev, { 
+          type: "bot", 
+          text: eligible.length > 0
+            ? `✅ Found ${eligible.length} scheme(s) you may be eligible for!`
+            : "😔 No schemes found matching your criteria. Try different answers?",
+          id: Date.now()
+        }]);
+        setShowFreeInput(true);
+      }, 500);
     }
   };
 
@@ -436,7 +363,7 @@ export default function ChatBot() {
     setTimeout(() => {
       setMessages(prev => [...prev, {
         type: "bot",
-        text: "I'm here to help! Check the console for debug information about scheme eligibility.",
+        text: "I'm here to help! Try the questionnaire to find schemes you're eligible for.",
         id: Date.now()
       }]);
       setAiLoading(false);
@@ -502,7 +429,7 @@ export default function ChatBot() {
           {loading && (
             <div style={{ paddingLeft: "42px", marginBottom: "16px" }}>
               <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "14px" }}>
-                🔍 Searching for eligible schemes...
+                🔍 Checking eligible schemes...
               </div>
             </div>
           )}
@@ -530,10 +457,17 @@ export default function ChatBot() {
             </div>
           )}
 
-          {/* Eligible Schemes Results */}
+          {/* Eligible Schemes Results - ONLY ONE BLOCK */}
           {eligibleSchemes.length > 0 && (
             <div style={{ paddingLeft: "42px", marginBottom: "16px" }}>
-              <h3 style={{ color: "#fff", marginBottom: "12px" }}>Schemes you may be eligible for:</h3>
+              <h3 style={{ 
+                color: "#fff", 
+                marginBottom: "12px",
+                fontSize: "18px",
+                fontWeight: "600" 
+              }}>
+                Schemes you may be eligible for:
+              </h3>
               {eligibleSchemes.map((scheme, i) => (
                 <SchemeCard key={i} scheme={scheme} />
               ))}
