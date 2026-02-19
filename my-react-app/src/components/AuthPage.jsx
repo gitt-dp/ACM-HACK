@@ -1,27 +1,86 @@
+import { useState } from "react";
+
 export default function AuthPage({ onSuccess }) {
+  const [isLogin, setIsLogin] = useState(true);
+
   return (
-    <div className="text-white w-full">
+    <div className="w-full max-w-sm mx-auto">
 
-      <h2 className="text-2xl font-semibold mb-6 text-center">Welcome</h2>
+      {/* Main Card */}
+      <div className="bg-white border border-gray-300 rounded-md p-8 text-center">
 
-      <input
-        type="email"
-        placeholder="Email"
-        className="w-full mb-4 px-4 py-3 rounded-lg bg-gray-900/60 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
-      />
+        <h1 className="text-4xl font-bold mb-6 text-black">
+          Scheme<span className="text-blue-600">AI</span>
+        </h1>
 
-      <input
-        type="password"
-        placeholder="Password"
-        className="w-full mb-6 px-4 py-3 rounded-lg bg-gray-900/60 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
-      />
+        {!isLogin && (
+          <p className="text-gray-500 text-sm mb-4">
+            Sign up to find government schemes you qualify for.
+          </p>
+        )}
 
-      <button
-        onClick={onSuccess}
-        className="btn-gradient w-full py-3 rounded-lg font-medium"
-      >
-        Sign in
-      </button>
+       <input
+  type="email"
+  placeholder="Email"
+  className="w-full mb-4 px-4 py-3 rounded-lg bg-gray-900/60 border border-gray-700 
+  text-white placeholder-gray-400
+  focus:outline-none focus:ring-2 focus:ring-sky-500"
+/>
+
+
+<input
+  type="password"
+  placeholder="Password"
+  className="w-full mb-4 px-4 py-3 rounded-lg bg-gray-900/60 border border-gray-700 
+  text-white placeholder-gray-400
+  focus:outline-none focus:ring-2 focus:ring-sky-500"
+/>
+
+
+        {!isLogin && (
+         <input
+  type="password"
+  placeholder="Confirm Password"
+  className="w-full mb-4 px-4 py-3 rounded-lg bg-gray-900/60 border border-gray-700 
+  text-white placeholder-gray-400
+  focus:outline-none focus:ring-2 focus:ring-sky-500"
+/>
+
+        )}
+
+        <button
+          onClick={onSuccess}
+className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-12 rounded mt-4 mx-auto block"
+        >
+          {isLogin ? "Log In" : "Sign Up"}
+        </button>
+
+      </div>
+
+      {/* Bottom Toggle Box */}
+<div className="glass-card rounded-3xl p-10 shadow-2xl text-center text-white">
+        {isLogin ? (
+          <>
+            Don't have an account?{" "}
+            <button
+              onClick={() => setIsLogin(false)}
+              className="text-blue-600 font-semibold"
+            >
+              Sign up
+            </button>
+          </>
+        ) : (
+          <>
+            Have an account?{" "}
+            <button
+              onClick={() => setIsLogin(true)}
+              className="text-blue-600 font-semibold"
+            >
+              Log in
+            </button>
+          </>
+        )}
+      </div>
 
     </div>
   );
