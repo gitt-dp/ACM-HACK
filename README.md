@@ -176,7 +176,6 @@ Running the development servers – npm run dev for frontend (Vite) and backend 
 🤝 Contributing
 Contributions are welcome! Please open an issue or submit a pull request.
 
-📄 License
-MIT License – see LICENSE file for details.
+
 
 Built for Bharat – Empowering citizens with easy access to government welfare schemes. 🇮🇳
