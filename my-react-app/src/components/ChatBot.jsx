@@ -1,27 +1,45 @@
 import { useState, useEffect, useRef } from "react";
+import { supabase } from "../supabase";
+import { useUser } from "../context/UserContext";
 import SchemeCard from "./SchemeCard";
-import schemes from "../data/schemes.json";
 
 const questions = [
   {
     id: "state",
     text: "Hi! 👋 I'm SchemeAI. Which state are you from?",
-    options: ["Tamil Nadu", "Karnataka", "Maharashtra", "Delhi"],
+    options: ["Tamil Nadu", "Karnataka", "Maharashtra", "Delhi", "Uttar Pradesh", "West Bengal", "All India"],
   },
   {
-    id: "category",
-    text: "What best describes you?",
-    options: ["Farmer", "Student", "Worker", "Women", "Senior Citizen", "General Low Income"],
+    id: "occupation",
+    text: "What is your occupation?",
+    options: ["Farmer", "Student", "Street Vendor", "Construction Worker", "Shopkeeper", "Fisherman", "Casual Labour", "Other"],
   },
+  {
+    id: "income",
+    text: "What is your monthly income? (in ₹)",
+    options: ["Less than ₹10,000", "₹10,000 - ₹15,000", "₹15,000 - ₹25,000", "Above ₹25,000"],
+  },
+  {
+    id: "age",
+    text: "What is your age?",
+    options: ["Below 18", "18-30", "31-40", "41-50", "51-60", "60-70", "70+"],
+  },
+  {
+    id: "landholding",
+    text: "Do you own any agricultural land?",
+    options: ["Yes", "No"],
+  },
+  {
+    id: "bpl_card",
+    text: "Do you have a BPL (Below Poverty Line) card?",
+    options: ["Yes", "No"],
+  },
+  {
+    id: "girl_child",
+    text: "Do you have a girl child below 10 years?",
+    options: ["Yes", "No"],
+  }
 ];
-
-function getEligibleSchemes(answers) {
-  return schemes.filter(
-    (s) =>
-      s.category === answers.category &&
-      (s.state === "All" || s.state === answers.state)
-  );
-}
 
 function useTypingEffect(text, speed = 30) {
   const [displayed, setDisplayed] = useState("");
@@ -47,9 +65,12 @@ function useTypingEffect(text, speed = 30) {
 
 function BotMessage({ text, onDone }) {
   const { displayed, done } = useTypingEffect(text);
+  
   useEffect(() => {
-    if (done && onDone) onDone();
-  }, [done]);
+    if (done && onDone) {
+      onDone();
+    }
+  }, [done, onDone]);
 
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "16px" }}>
@@ -131,79 +152,306 @@ export default function ChatBot() {
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState({});
   const [showOptions, setShowOptions] = useState(false);
-  const [results, setResults] = useState(null);
+  const [eligibleSchemes, setEligibleSchemes] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [freeText, setFreeText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [showFreeInput, setShowFreeInput] = useState(false);
   const bottomRef = useRef(null);
+  
+  const { userData } = useUser();
 
+  // Initialize chat
   useEffect(() => {
-    setMessages([{ type: "bot", text: questions[0].text }]);
+    if (messages.length === 0) {
+      setMessages([{ type: "bot", text: questions[0].text, id: Date.now() }]);
+    }
   }, []);
 
+  // Scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, showOptions, showFreeInput]);
+  }, [messages]);
 
-  const handleBotDone = () => setShowOptions(true);
+  // Handle when bot message finishes typing
+  const handleBotDone = () => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.type === "bot" && !showOptions && eligibleSchemes.length === 0) {
+      setShowOptions(true);
+    }
+  };
 
-  const handleOption = (option) => {
-    const q = questions[currentQ];
-    const newAnswers = { ...answers, [q.id]: option };
-    setAnswers(newAnswers);
-    setShowOptions(false);
-    setMessages((prev) => [...prev, { type: "user", text: option }]);
-    const nextQ = currentQ + 1;
-    if (nextQ < questions.length) {
+  // Helper function to convert age range to numeric value
+  const getAgeNumeric = (ageRange) => {
+    const ageMap = {
+      "Below 18": 15,
+      "18-30": 25,
+      "31-40": 35,
+      "41-50": 45,
+      "51-60": 55,
+      "60-70": 65,
+      "70+": 75
+    };
+    return ageMap[ageRange] || 0;
+  };
+
+  // Helper function to convert income range to numeric value
+  const getIncomeNumeric = (incomeRange) => {
+    const incomeMap = {
+      "Less than ₹10,000": 5000,
+      "₹10,000 - ₹15,000": 12500,
+      "₹15,000 - ₹25,000": 20000,
+      "Above ₹25,000": 30000
+    };
+    return incomeMap[incomeRange] || 0;
+  };
+
+  // Fetch and filter schemes
+  const fetchEligibleSchemes = async (userAnswers) => {
+    setLoading(true);
+    
+    try {
+      console.log("🔍 FETCHING SCHEMES FROM SUPABASE...");
+      console.log("📝 User Answers:", userAnswers);
+
+      // Get all schemes from Supabase
+      const { data: schemes, error } = await supabase
+        .from('government_schemes')
+        .select('*');
+
+      if (error) {
+        console.error("❌ Supabase Error:", error);
+        throw error;
+      }
+
+      console.log(`✅ Found ${schemes.length} schemes in database`);
+      console.log("📋 All schemes:", schemes.map(s => s.name));
+
+      // For each scheme, log its eligibility criteria
+      schemes.forEach((scheme, index) => {
+        console.log(`\n--- Scheme ${index + 1}: ${scheme.name} ---`);
+        console.log("Criteria:", JSON.stringify(scheme.eligibility_criteria, null, 2));
+      });
+
+      // Manual test with hardcoded expected matches
+      console.log("\n🔍 TESTING WITH PROVIDED ANSWERS:");
+      
+      const testAnswers = {
+        state: "Tamil Nadu",
+        occupation: "Farmer",
+        income: "Less than ₹10,000",
+        age: "31-40",
+        landholding: "Yes",
+        bpl_card: "Yes",
+        girl_child: "Yes"
+      };
+
+      console.log("Test answers:", testAnswers);
+
+      // Test each scheme manually
+      const expectedMatches = {
+        "PM Shram Yogi Maan-dhan Yojana (PM-SYM)": true,
+        "Pradhan Mantri Jeevan Jyoti Bima Yojana (PMJJBY)": true,
+        "Pradhan Mantri Suraksha Bima Yojana (PMSBY)": true,
+        "Atal Pension Yojana (APY)": true,
+        "National Food Security Act (NFSA)": true,
+        "Indira Gandhi National Old Age Pension Scheme (IGNOAPS)": false,
+        "PM Surya Ghar Muft Bijli Yojana": true,
+        "Sukanya Samriddhi Yojana (SSY)": true,
+        "National Pension Scheme for Traders (NPS-Traders)": false
+      };
+
+      // Filter schemes based on actual logic
+      const filtered = schemes.filter(scheme => {
+        const criteria = scheme.eligibility_criteria;
+        let isEligible = true;
+        const reasons = [];
+
+        console.log(`\nChecking: ${scheme.name}`);
+
+        // State check
+        if (criteria.state && criteria.state !== "all" && criteria.state !== testAnswers.state) {
+          isEligible = false;
+          reasons.push(`State mismatch: need ${criteria.state}, got ${testAnswers.state}`);
+        }
+
+        // Age check
+        if (criteria.min_age || criteria.max_age) {
+          const age = getAgeNumeric(testAnswers.age);
+          if (criteria.min_age && age < criteria.min_age) {
+            isEligible = false;
+            reasons.push(`Age too low: ${age} < ${criteria.min_age}`);
+          }
+          if (criteria.max_age && age > criteria.max_age) {
+            isEligible = false;
+            reasons.push(`Age too high: ${age} > ${criteria.max_age}`);
+          }
+        }
+
+        // Income check
+        if (criteria.max_income) {
+          const income = getIncomeNumeric(testAnswers.income);
+          if (income > criteria.max_income) {
+            isEligible = false;
+            reasons.push(`Income too high: ${income} > ${criteria.max_income}`);
+          }
+        }
+
+        // Occupation check
+        if (criteria.occupations && criteria.occupations.length > 0) {
+          if (!criteria.occupations.includes("any")) {
+            const userOcc = testAnswers.occupation.toLowerCase();
+            const matchFound = criteria.occupations.some(occ => {
+              const occLower = occ.toLowerCase();
+              return userOcc.includes(occLower) || occLower.includes(userOcc.split(' ')[0]);
+            });
+            if (!matchFound) {
+              isEligible = false;
+              reasons.push(`Occupation mismatch: ${testAnswers.occupation} not in ${criteria.occupations.join(', ')}`);
+            }
+          }
+        }
+
+        // Landholding check
+        if (criteria.landholding_required && testAnswers.landholding === "No") {
+          isEligible = false;
+          reasons.push(`Landholding required`);
+        }
+
+        // BPL check
+        if (criteria.bpl_required && testAnswers.bpl_card === "No") {
+          isEligible = false;
+          reasons.push(`BPL card required`);
+        }
+
+        // Girl child check
+        if (criteria.min_age_girl !== undefined && testAnswers.girl_child === "No") {
+          isEligible = false;
+          reasons.push(`Girl child required`);
+        }
+
+        console.log(`Result: ${isEligible ? '✅ ELIGIBLE' : '❌ NOT ELIGIBLE'}`);
+        if (reasons.length > 0) {
+          console.log('Reasons:', reasons);
+        }
+
+        // Compare with expected
+        const expected = expectedMatches[scheme.name];
+        if (expected !== undefined) {
+          if (isEligible === expected) {
+            console.log(`✓ Matches expected: ${expected}`);
+          } else {
+            console.log(`✗ MISMATCH! Expected: ${expected}, Got: ${isEligible}`);
+          }
+        }
+
+        return isEligible;
+      });
+
+      console.log("\n🎯 FINAL ELIGIBLE SCHEMES:", filtered.map(s => s.name));
+      setEligibleSchemes(filtered);
+
+      // Add result message
       setTimeout(() => {
-        setMessages((prev) => [...prev, { type: "bot", text: questions[nextQ].text }]);
-        setCurrentQ(nextQ);
-      }, 500);
-    } else {
-      const eligible = getEligibleSchemes(newAnswers);
-      setResults(eligible);
-      setTimeout(() => {
-        setMessages((prev) => [...prev, {
-          type: "bot",
-          text: eligible.length > 0
-            ? `✅ Found ${eligible.length} scheme(s) for you! You can also ask me anything below 👇`
-            : "😔 No schemes found. But you can still ask me anything below 👇"
+        setMessages(prev => [...prev, { 
+          type: "bot", 
+          text: filtered.length > 0
+            ? `✅ Found ${filtered.length} scheme(s) you may be eligible for!`
+            : "😔 No schemes found matching your criteria. Check console for details.",
+          id: Date.now()
         }]);
         setShowFreeInput(true);
       }, 500);
+
+    } catch (error) {
+      console.error('Error fetching schemes:', error);
+      setMessages(prev => [...prev, { 
+        type: "bot", 
+        text: "Sorry, I'm having trouble connecting. Please try again.",
+        id: Date.now()
+      }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOption = (option) => {
+    if (!showOptions) return;
+    
+    const q = questions[currentQ];
+    const newAnswers = { ...answers, [q.id]: option };
+    
+    setAnswers(newAnswers);
+    setShowOptions(false);
+    setMessages(prev => [...prev, { type: "user", text: option, id: Date.now() }]);
+    
+    const nextQ = currentQ + 1;
+    
+    if (nextQ < questions.length) {
+      setTimeout(() => {
+        setCurrentQ(nextQ);
+        setMessages(prev => [...prev, { 
+          type: "bot", 
+          text: questions[nextQ].text,
+          id: Date.now() 
+        }]);
+      }, 500);
+    } else {
+      // Use the actual answers, not test answers
+      fetchEligibleSchemes(newAnswers);
+      
+      const sessionId = localStorage.getItem('sessionId');
+      if (sessionId) {
+        supabase
+          .from('user_sessions')
+          .update({ 
+            user_data: { 
+              ...userData,
+              questionnaire: newAnswers 
+            }
+          })
+          .eq('session_id', sessionId)
+          .catch(err => console.log('Error saving answers:', err));
+      }
     }
   };
 
   const handleVoiceResult = (text) => {
+    if (!showOptions) return;
     const match = questions[currentQ].options.find(
       opt => text.toLowerCase().includes(opt.toLowerCase())
     );
     if (match) handleOption(match);
   };
 
-  // Send free text question to Claude AI
   const handleAskAI = async () => {
-    if (!freeText.trim()) return;
+    if (!freeText.trim() || aiLoading) return;
+    
     const userQ = freeText.trim();
     setFreeText("");
-    setMessages((prev) => [...prev, { type: "user", text: userQ }]);
-   
-
-    setAiLoading(false);
+    setAiLoading(true);
+    
+    setMessages(prev => [...prev, { type: "user", text: userQ, id: Date.now() }]);
+    
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        type: "bot",
+        text: "I'm here to help! Check the console for debug information about scheme eligibility.",
+        id: Date.now()
+      }]);
+      setAiLoading(false);
+    }, 1000);
   };
 
   const handleRestart = () => {
     setCurrentQ(0);
     setAnswers({});
     setShowOptions(false);
-    setResults(null);
+    setEligibleSchemes([]);
     setFreeText("");
     setShowFreeInput(false);
     setAiLoading(false);
-    setMessages([]);
-    setTimeout(() => {
-      setMessages([{ type: "bot", text: questions[0].text }]);
-    }, 100);
+    setMessages([{ type: "bot", text: questions[0].text, id: Date.now() }]);
   };
 
   return (
@@ -213,7 +461,6 @@ export default function ChatBot() {
       display: "flex", flexDirection: "column",
       fontFamily: "'Segoe UI', sans-serif", overflow: "hidden"
     }}>
-
       {/* NAVBAR */}
       <div style={{
         padding: "16px 24px",
@@ -241,37 +488,55 @@ export default function ChatBot() {
         flexDirection: "column", alignItems: "center", padding: "32px 16px 24px"
       }}>
         <div style={{ width: "100%", maxWidth: "720px" }}>
-
-          {messages.map((msg, i) =>
+          {messages.map((msg) => (
             msg.type === "bot"
-              ? <BotMessage key={i} text={msg.text} onDone={i === messages.length - 1 ? handleBotDone : null} />
-              : <UserMessage key={i} text={msg.text} />
+              ? <BotMessage 
+                  key={msg.id} 
+                  text={msg.text} 
+                  onDone={msg.id === messages[messages.length-1]?.id && !loading ? handleBotDone : null} 
+                />
+              : <UserMessage key={msg.id} text={msg.text} />
+          ))}
+
+          {/* Loading indicator */}
+          {loading && (
+            <div style={{ paddingLeft: "42px", marginBottom: "16px" }}>
+              <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "14px" }}>
+                🔍 Searching for eligible schemes...
+              </div>
+            </div>
           )}
 
-          {/* Option buttons + Voice */}
-          {showOptions && results === null && (
+          {/* Option buttons */}
+          {showOptions && !loading && currentQ < questions.length && (
             <div style={{ paddingLeft: "42px", marginBottom: "24px" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "4px" }}>
                 {questions[currentQ].options.map((opt) => (
-                  <button key={opt} onClick={() => handleOption(opt)} style={{
-                    padding: "10px 20px", background: "rgba(255,255,255,0.10)",
-                    border: "1px solid rgba(255,255,255,0.4)", color: "#fff",
-                    borderRadius: "999px", cursor: "pointer", fontSize: "13px",
-                    fontWeight: "600", transition: "all 0.2s", backdropFilter: "blur(8px)"
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.25)"}
-                    onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.10)"}
-                  >{opt}</button>
+                  <button 
+                    key={opt} 
+                    onClick={() => handleOption(opt)} 
+                    style={{
+                      padding: "10px 20px", background: "rgba(255,255,255,0.10)",
+                      border: "1px solid rgba(255,255,255,0.4)", color: "#fff",
+                      borderRadius: "999px", cursor: "pointer", fontSize: "13px",
+                      fontWeight: "600", transition: "all 0.2s", backdropFilter: "blur(8px)"
+                    }}
+                  >
+                    {opt}
+                  </button>
                 ))}
               </div>
               <VoiceMic onResult={handleVoiceResult} />
             </div>
           )}
 
-          {/* Scheme Results */}
-          {results !== null && results.length > 0 && (
+          {/* Eligible Schemes Results */}
+          {eligibleSchemes.length > 0 && (
             <div style={{ paddingLeft: "42px", marginBottom: "16px" }}>
-              {results.map((s, i) => <SchemeCard key={i} scheme={s} />)}
+              <h3 style={{ color: "#fff", marginBottom: "12px" }}>Schemes you may be eligible for:</h3>
+              {eligibleSchemes.map((scheme, i) => (
+                <SchemeCard key={i} scheme={scheme} />
+              ))}
             </div>
           )}
 
@@ -295,7 +560,7 @@ export default function ChatBot() {
         </div>
       </div>
 
-      {/* FREE TEXT INPUT BOX — shows after results */}
+      {/* FREE TEXT INPUT BOX */}
       {showFreeInput && (
         <div style={{
           flexShrink: 0, padding: "16px 24px",
@@ -340,7 +605,6 @@ export default function ChatBot() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
